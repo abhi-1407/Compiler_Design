@@ -1,0 +1,105 @@
+#include<bits/stdc++.h>
+using namespace std;
+
+map<int, map<char, set<int>>> nfa;
+map<set<int>, map<char, set<int>>> dfa;
+set<int> states;
+map<set<int>, int> state_map;
+set<int> final_states;
+
+void addNFATransition(int from, char symbol, int to) {
+    nfa[from][symbol].insert(to);
+}
+
+void addDFATransition(set<int> from, char symbol, set<int> to) {
+    dfa[from][symbol] = to;
+    states.insert(from.begin(), from.end());
+    states.insert(to.begin(), to.end());
+}
+
+set<int> epsilonClosure(set<int> states) {
+    set<int> result = states;
+    queue<int> q;
+    for (int state : states) {
+        q.push(state);
+    }
+    while (!q.empty()) {
+        int current = q.front();
+        q.pop();
+        for (int next : nfa[current][238]) {
+            if (result.find(next) == result.end()) {
+                result.insert(next);
+                q.push(next);
+            }
+        }
+    }
+    return result;
+}
+
+void subsetConstruction() {
+    queue<set<int>> unmarked_states;
+    set<int> start_state = epsilonClosure({0});
+    state_map[start_state] = 0;
+    unmarked_states.push(start_state);
+    while (!unmarked_states.empty()) {
+        set<int> current_state = unmarked_states.front();
+        unmarked_states.pop();
+        for (char symbol : {'a', 'b'}) {
+            set<int> next_state;
+            for (int state : current_state) {
+                for (int next : nfa[state][symbol]) {
+                    next_state.insert(next);
+                }
+            }
+            next_state = epsilonClosure(next_state);
+            if (next_state.empty()) continue;
+            if (state_map.find(next_state) == state_map.end()) {
+                int state_id = state_map.size();
+                state_map[next_state] = state_id;
+                unmarked_states.push(next_state);
+            }
+            addDFATransition(current_state, symbol, next_state);
+        }
+    }
+
+    for (auto entry : state_map) {
+        for (int state : entry.first) {
+            if (state == 3) {
+                final_states.insert(entry.second);
+            }
+        }
+    }
+}
+
+bool isAccepted(string input) {
+    set<int> current_state = epsilonClosure({0});
+    for (char symbol : input) {
+        if (dfa[current_state].find(symbol) == dfa[current_state].end()) {
+            return false;
+        }
+        current_state = dfa[current_state][symbol];
+    }
+    return final_states.find(state_map[current_state]) != final_states.end();
+}
+
+int main() {
+    addNFATransition(0, 238, 1);
+    addNFATransition(1, 'a', 1);
+    addNFATransition(1, 'b', 1);
+    addNFATransition(1, 'b', 2);
+    addNFATransition(2, 'a', 3);
+    addNFATransition(2, 'b', 3);
+
+    subsetConstruction();
+
+    vector<string> test_strings = {"abb", "aabb", "baab", "ababab"};
+    for (string s : test_strings) {
+        if (isAccepted(s)) {
+            cout << s << " is Accepted" << endl;
+        } else {
+            cout << s << " is Not Accepted" << endl;
+        }
+    }
+
+    return 0;
+}
